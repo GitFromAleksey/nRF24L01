@@ -7,7 +7,7 @@
 
   <Targets>
     <Target>
-      <TargetName>keil</TargetName>
+      <TargetName>Prj</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
       <pArmCC>5060750::V5.06 update 6 (build 750)::.\ARMCC</pArmCC>
@@ -518,9 +518,6 @@
               <FilePath>../Src/system_stm32f1xx.c</FilePath>
             </File>
           </Files>
-        </Group>
-        <Group>
-          <GroupName>::CMSIS</GroupName>
         </Group>
       </Groups>
     </Target>
