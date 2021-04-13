@@ -64,7 +64,8 @@ void SystemClock_Config(void);
   */
 int main(void)
 {
-  uint8_t spi_data[10];
+  uint8_t spi_data_out[10];
+  uint8_t spi_data_in[10];
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -98,7 +99,9 @@ int main(void)
   {
     HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_RESET);
     
-    HAL_SPI_Transmit(&hspi1, spi_data, 10, 100);
+//    spi_data_out[0] = 0x03;
+    HAL_SPI_Transmit(&hspi1, spi_data_out, 1, 100);
+    HAL_SPI_Receive(&hspi1, spi_data_in, 2, 100);
     
     HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_SET);
     /* USER CODE END WHILE */
