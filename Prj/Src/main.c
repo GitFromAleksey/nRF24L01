@@ -24,7 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "nRF24L01.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,10 +62,22 @@ void SystemClock_Config(void);
   * @brief  The application entry point.
   * @retval int
   */
+t_nRfConfig nRfConfig;
+  
+void SPI_ReadRegister(SPI_HandleTypeDef *hspi, uint8_t *pReg, uint8_t reg_addr)
+{
+  HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_RESET);
+  
+  HAL_SPI_Transmit(&hspi1, &reg_addr, 1, 100);
+  HAL_SPI_Receive(&hspi1, pReg, 1, 100);
+  
+  HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_SET);
+}
+
 int main(void)
 {
-  uint8_t spi_data_out[10];
-  uint8_t spi_data_in[10];
+  uint8_t spi_data_out[10] = {0};
+  uint8_t spi_data_in[10] = {0};
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -97,13 +109,15 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_RESET);
-    
-//    spi_data_out[0] = 0x03;
-    HAL_SPI_Transmit(&hspi1, spi_data_out, 1, 100);
-    HAL_SPI_Receive(&hspi1, spi_data_in, 2, 100);
-    
-    HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_SET);
+  
+  SPI_ReadRegister(&hspi1, &nRfConfig.byte, REG_CONFIG);
+  
+//    HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_RESET);
+//    
+//    HAL_SPI_Transmit(&hspi1, spi_data_out, 1, 100);
+//    HAL_SPI_Receive(&hspi1, spi_data_in, 2, 100);
+//    
+//    HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_SET);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
