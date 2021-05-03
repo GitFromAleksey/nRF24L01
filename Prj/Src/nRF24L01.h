@@ -3,6 +3,21 @@
 
 #include <stdint.h>
 
+// commands
+#define CMD_R_REGISTER          (uint8_t)0x00 // 000A AAAA
+#define CMD_W_REGISTER(reg)     (uint8_t)(reg | (1<<5)) // 001A AAAA
+#define CMD_R_RX_PAYLOAD        (uint8_t)0x61 // 0110 0001
+#define CMD_W_TX_PAYLOAD        (uint8_t)0xA0 // 1010 0000
+#define CMD_FLUSH_TX            (uint8_t)0xE1 // 1110 0001
+#define CMD_FLUSH_RX            (uint8_t)0xE2 // 1110 0010
+#define CMD_REUSE_TX_PL         (uint8_t)0xE3 // 1110 0011
+#define CMD_ACTIVATE            (uint8_t)0x50 // 0101 0000 - This write command followed by data 0x73
+#define CMD_R_RX_PL_WID         (uint8_t)0x60 // 0110 0000 -  Read RX-payload
+#define CMD_W_ACK_PAYLOAD(pipe) (uint8_t)((pipe&0x7) | 0xA8) // 1010 1PPP - Write Payload to be transmitted together with n PIPE PPP
+#define CMD_W_TX_PAYLOAD_NO_ACK (uint8_t)0x58 // 1011 000 - Used in TX mode. Disables AUTOACK on this specific packet
+#define CMD_NOP                 (uint8_t)0xFF // 1111 1111 -  No Operation. Might be used to read the STATUSregister
+
+
 // registers addresses defines
 #define REG_CONFIG        (uint8_t)0x00
 #define REG_EN_AA         (uint8_t)0x01
@@ -98,7 +113,7 @@ typedef union
 {
   struct
   {
-    unsigned ARC  : 2; //  Auto Retransmit Count (‘0000’,..., ‘1111’ – Up to 15 Re-Transmit)
+    unsigned ARC  : 4; // Auto Retransmit Count (‘0000’,..., ‘1111’ – Up to 15 Re-Transmit)
     unsigned ARD  : 4; // Auto Retransmit Delay (‘0000’ – Wait 250µS, ..., ‘1111’ – Wait 4000µS)
   } SETUP_RETR;
   uint8_t byte;
@@ -165,6 +180,12 @@ typedef union
   uint8_t byte;
 } t_nRF_CD; // Carrier Detect.
 
+
+typedef struct
+{
+  uint8_t addr;
+  uint8_t *reg_union;
+} t_register;
 
 
 #endif /* _N_RF24L01_H_ */
