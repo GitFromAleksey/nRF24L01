@@ -187,5 +187,57 @@ typedef struct
   uint8_t *reg_union;
 } t_register;
 
+#define REGISTERS_COUNT   10u
+typedef struct
+{
+  t_nRfConfig       nRfConfigStruct;
+  t_register        nRfConfigReg;
+
+  t_nRF_EN_AA       nRfEnAaStruct;
+  t_register        nRfEnAaReg;
+  
+  t_nRf_EN_RXADDR   nRfEnRxAddrStruct;
+  t_register        nRfEnRxAddrReg;
+
+  t_nRf_SETUP_AW    nRfSetupAwStruct;
+  t_register        nRfSetupAwReg;
+
+  t_nRf_SETUP_RETR  nRfSetupRetrStruct;
+  t_register        nRfSetupRetrReg;
+
+  t_nRF_RF_CH       nRfRfChStruct;
+  t_register        nRfRfChReg;
+
+  t_nRF_RF_SETUP    nRfRfSetupStruct;
+  t_register        nRfRfSetupReg;
+
+  t_nRF_STATUS      nRfStatusStruct;
+  t_register        nRfStatusReg;
+
+  t_nRF_OBSERVE_TX  nRfObserveTxStruct;
+  t_register        nRfObserveTxReg;
+
+  t_nRF_CD          nRfCdStruct;
+  t_register        nRfCdReg;
+
+  uint8_t pollingCounter;
+  t_register *PollingRegistersArray[REGISTERS_COUNT];
+
+  void (*csnSetHi)(void);
+  void (*csnSetLo)(void);
+  void (*spiTransmit)(uint8_t *data, uint16_t size);
+  void (*spiReceive)(uint8_t *data, uint16_t size);
+} t_nRF24L01;
+
+
+void nRF_Setup(t_nRF24L01 *p_nRF,
+              void (*csnSetHi)(void),
+              void (*csnSetLo)(void),
+              void (*spiTransmit)(uint8_t *data, uint16_t size),
+              void (*spiReceive)(uint8_t *data, uint16_t size));
+
+void nRfPollingRegisters(t_nRF24L01 *p_nRf);
+void nRfRegisterRead(t_nRF24L01 *p_nRf, t_register *p_reg);
+
 
 #endif /* _N_RF24L01_H_ */

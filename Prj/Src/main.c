@@ -62,22 +62,11 @@ void SystemClock_Config(void);
   * @brief  The application entry point.
   * @retval int
   */
-t_nRfConfig       nRfConfig;
-t_nRF_EN_AA       nRfEnAa;
-t_nRf_EN_RXADDR   nRfEnRxAddr;
-t_nRf_SETUP_AW    nRfSetupAw;
-t_nRf_SETUP_RETR  nRfSetupRetr;
-t_nRF_RF_CH       nRfRfCh;
-t_nRF_RF_SETUP    nRfRfSetup;
-t_nRF_STATUS      nRfStatus;
-t_nRF_OBSERVE_TX  nRfObserveTx;
-t_nRF_CD          nRfCd;
 
-t_register RegistersArr[10];
 
-void CsnOn(void)
+void CsnSetLo(void)
 { HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_RESET); }
-void CsnOff(void)
+void CsnSetHi(void)
 { HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_SET); }
 
 void SPI_Transmit(uint8_t *data, uint16_t size)
@@ -90,75 +79,10 @@ void SPI_Receive(uint8_t *data, uint16_t size)
   HAL_SPI_Receive(&hspi1, data, size, 100);
 }
 
-void nRfRegisterRead(t_register *pReg)
-{
-  CsnOn();
-  
-  SPI_Transmit(&pReg->addr, 1);
-  SPI_Receive(pReg->reg_union, 1);
-  
-  CsnOff();
-}
-
-void nRfRegisterWrite(t_register *pReg)
-{
-  uint8_t buf[2] = {0};
-  buf[0] = pReg->addr | (1<<5);
-  buf[1] = *pReg->reg_union;
-  CsnOn();
-  
-  SPI_Transmit(buf, 2);
-  
-  CsnOff();
-}
+t_nRF24L01 nRF_0;
 
 int main(void)
 {
-  int i = 0;
-  uint8_t spi_data_out[10] = {0};
-  uint8_t spi_data_in[10] = {0};
-
-  t_register reg;
-
-  reg.addr = REG_CONFIG;
-  reg.reg_union = &nRfConfig.byte;
-  RegistersArr[0] = reg;
-  
-  reg.addr = REG_EN_AA;
-  reg.reg_union = &nRfEnAa.byte;
-  RegistersArr[1] = reg;
-  
-  reg.addr = REG_EN_RXADDR;
-  reg.reg_union = &nRfEnRxAddr.byte;
-  RegistersArr[2] = reg;
-
-  reg.addr = REG_SETUP_AW;
-  reg.reg_union = &nRfSetupAw.byte;
-  RegistersArr[3] = reg;
-
-  reg.addr = REG_SETUP_REPR;
-  reg.reg_union = &nRfSetupRetr.byte;
-  RegistersArr[4] = reg;
-
-  reg.addr = REG_RF_CH;
-  reg.reg_union = &nRfRfCh.byte;
-  RegistersArr[5] = reg;
-
-  reg.addr = REG_RF_SETUP;
-  reg.reg_union = &nRfRfSetup.byte;
-  RegistersArr[6] = reg;
-
-  reg.addr = REG_STATUS;
-  reg.reg_union = &nRfStatus.byte;
-  RegistersArr[7] = reg;
-
-  reg.addr = REG_OBSERVE_TX;
-  reg.reg_union = &nRfObserveTx.byte;
-  RegistersArr[8] = reg;
-  
-  reg.addr = REG_CD;
-  reg.reg_union = &nRfCd.byte;
-  RegistersArr[9] = reg;
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -188,27 +112,13 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
+  nRF_Setup(&nRF_0, CsnSetHi, CsnSetLo, SPI_Transmit, SPI_Receive);
+  
   while (1)
   {
-    for(i = 0; i < sizeof(RegistersArr)/sizeof(t_register); ++i)
-    {
-      nRfRegisterRead(&RegistersArr[i]);
-      HAL_Delay(100);
-    }
-     
-    nRfRegisterRead(&RegistersArr[0]);
-    if(nRfConfig.CONFIG.PWR_UP == 0)
-    {
-      nRfConfig.CONFIG.PWR_UP = 1;
-      nRfRegisterWrite(&RegistersArr[0]);
-    }
-//    HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_RESET);
-//    
-//    HAL_SPI_Transmit(&hspi1, spi_data_out, 1, 100);
-//    HAL_SPI_Receive(&hspi1, spi_data_in, 2, 100);
-//    
-//    HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_SET);
+    nRfPollingRegisters(&nRF_0);
+
+    HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

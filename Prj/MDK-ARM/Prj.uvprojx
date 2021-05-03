@@ -422,6 +422,11 @@
               <FileType>5</FileType>
               <FilePath>..\Src\nRF24L01.h</FilePath>
             </File>
+            <File>
+              <FileName>nRF24L01.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\nRF24L01.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
