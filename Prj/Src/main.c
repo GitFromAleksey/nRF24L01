@@ -113,12 +113,17 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   nRF_Setup(&nRF_0, CsnSetHi, CsnSetLo, SPI_Transmit, SPI_Receive);
-  
+
   while (1)
   {
     nRfPollingRegisters(&nRF_0);
 
-    HAL_Delay(100);
+//    if(nRF_0.nRfConfigStruct.CONFIG.PWR_UP == 0)
+//    {
+//      nRF_0.nRfConfigStruct.CONFIG.PWR_UP = 1;
+//      nRfRegisterWrite(&nRF_0, &nRF_0.nRfConfigReg);
+//    }
+    //HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

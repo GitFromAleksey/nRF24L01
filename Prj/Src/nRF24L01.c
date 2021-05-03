@@ -80,9 +80,18 @@ void nRF_Setup(t_nRF24L01 *p_nRF,
   p_nRF->csnSetLo = csnSetLo;
   p_nRF->spiReceive = spiReceive;
   p_nRF->spiTransmit = spiTransmit;
+
+  nRfRegisterRead(p_nRF, &p_nRF->nRfConfigReg); // нужно произвести чтение, чтобы модуль ожил
 // CONFIG 0x0A - 1010 - EN_CRC, PWR_UP
+
+  p_nRF->nRfConfigStruct.CONFIG.EN_CRC = 1;
+  p_nRF->nRfConfigStruct.CONFIG.PWR_UP = 1;
+  nRfRegisterWrite(p_nRF, &p_nRF->nRfConfigReg);
 // pause 5ms
 // EN_AA 0x02 - 10 - ENAA_P1
+  p_nRF->nRfEnAaStruct.byte = 0;
+  p_nRF->nRfEnAaStruct.en_aa.ENAA_P1 = 1;
+  nRfRegisterWrite(p_nRF, &p_nRF->nRfEnAaReg);
 // REG_EN_RXADDR 0x02 - 10 - ERX_P1
 // SETUP_AW 0x01 - RX/TX Address field width '01' - 3 bytes 
 // SETUP_RETR 0x5F - 1011111 - ARD(Auto Retransmit Delay), ARC(Auto Retransmit Count)
@@ -117,12 +126,14 @@ void nRfRegisterRead(t_nRF24L01 *p_nRf, t_register *p_reg)
 
 void nRfRegisterWrite(t_nRF24L01 *p_nRf, t_register *p_reg)
 {
-//  uint8_t buf[2] = {0};
-//  buf[0] = CMD_W_REGISTER(pReg->addr);
-//  buf[1] = *pReg->reg_union;
-//  CsnOn();
-//  
-//  SPI_Transmit(buf, 2);
-//  
-//  CsnOff();
+  uint8_t buf[2] = {0};
+
+  buf[0] = CMD_W_REGISTER(p_reg->addr);
+  buf[1] = *p_reg->reg_union;
+
+  p_nRf->csnSetLo();
+
+  p_nRf->spiTransmit(buf, 2);
+
+  p_nRf->csnSetHi();
 }

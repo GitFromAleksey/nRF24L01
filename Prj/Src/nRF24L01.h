@@ -238,6 +238,7 @@ void nRF_Setup(t_nRF24L01 *p_nRF,
 
 void nRfPollingRegisters(t_nRF24L01 *p_nRf);
 void nRfRegisterRead(t_nRF24L01 *p_nRf, t_register *p_reg);
+void nRfRegisterWrite(t_nRF24L01 *p_nRf, t_register *p_reg);
 
 
 #endif /* _N_RF24L01_H_ */
