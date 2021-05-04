@@ -20,15 +20,9 @@ void nRF_AddPollingRegister(t_nRF24L01 *p_nRF, t_register *p_reg)
     p_reg->next_register = NULL;
   }
 }
-
-void nRF_Setup(t_nRF24L01 *p_nRF,
-              void (*csnSetHi)(void),
-              void (*csnSetLo)(void),
-              void (*spiTransmit)(uint8_t *data, uint16_t size),
-              void (*spiReceive)(uint8_t *data, uint16_t size))
+//-----------------------------------------------------------------------------
+void nRF_RegistersInit(t_nRF24L01 *p_nRF)
 {
-  int i = 0;
-//  p_nRF->pollingCounter = 0;
   p_nRF->PollingRegistersList = NULL;
   
   p_nRF->nRfConfigReg.addr = REG_CONFIG; // присвоение адреса регистра
@@ -100,17 +94,10 @@ void nRF_Setup(t_nRF24L01 *p_nRF,
   p_nRF->nRfRxPwP1Reg.reg_union = &p_nRF->nRfRxPwP1Struct.byte;
   p_nRF->nRfRxPwP1Reg.size = sizeof(p_nRF->nRfRxPwP1Struct.byte);
   nRF_AddPollingRegister(p_nRF, &p_nRF->nRfRxPwP1Reg);
-
-
-
-  p_nRF->csnSetHi = csnSetHi;
-  p_nRF->csnSetLo = csnSetLo;
-  p_nRF->spiReceive = spiReceive;
-  p_nRF->spiTransmit = spiTransmit;
-
-
-
-
+}
+//-----------------------------------------------------------------------------
+void nRF_ModuleInit(t_nRF24L01 *p_nRF)
+{
   nRfRegisterRead(p_nRF, &p_nRF->nRfConfigReg); // нужно произвести чтение, чтобы модуль ожил
 // CONFIG 0x0A - 1010 - EN_CRC, PWR_UP
   p_nRF->nRfConfigStruct.CONFIG.EN_CRC = 1;
@@ -166,7 +153,23 @@ void nRF_Setup(t_nRF24L01 *p_nRF,
   p_nRF->nRfRxPwP1Struct.RX_PW_Px.RX_PW_Px = 32;
   nRfRegisterWrite(p_nRF, &p_nRF->nRfRxPwP1Reg);
 }
+//-----------------------------------------------------------------------------
+void nRF_Setup(t_nRF24L01 *p_nRF,
+              void (*csnSetHi)(void),
+              void (*csnSetLo)(void),
+              void (*spiTransmit)(uint8_t *data, uint16_t size),
+              void (*spiReceive)(uint8_t *data, uint16_t size))
+{
+  nRF_RegistersInit(p_nRF);
 
+  p_nRF->csnSetHi = csnSetHi;
+  p_nRF->csnSetLo = csnSetLo;
+  p_nRF->spiReceive = spiReceive;
+  p_nRF->spiTransmit = spiTransmit;
+
+  nRF_ModuleInit(p_nRF);
+}
+//-----------------------------------------------------------------------------
 // функция автоматического опроса регистров из списка
 void nRfPollingRegisters(t_nRF24L01 *p_nRf)
 {
@@ -177,7 +180,7 @@ void nRfPollingRegisters(t_nRF24L01 *p_nRf)
     p_nRf->PollingCurrentRegister = p_nRf->PollingCurrentRegister->next_register;
   nRfRegisterRead(p_nRf, p_reg);
 }
-
+//-----------------------------------------------------------------------------
 void nRfRegisterRead(t_nRF24L01 *p_nRf, t_register *p_reg)
 {
   p_nRf->csnSetLo();
@@ -187,7 +190,7 @@ void nRfRegisterRead(t_nRF24L01 *p_nRf, t_register *p_reg)
 
   p_nRf->csnSetHi();
 }
-
+//-----------------------------------------------------------------------------
 void nRfRegisterWrite(t_nRF24L01 *p_nRf, t_register *p_reg)
 {
   uint8_t buf = 0;
@@ -201,4 +204,4 @@ void nRfRegisterWrite(t_nRF24L01 *p_nRf, t_register *p_reg)
 
   p_nRf->csnSetHi();
 }
-
+//-----------------------------------------------------------------------------
