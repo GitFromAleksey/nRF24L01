@@ -2,6 +2,7 @@
 #define _N_RF24L01_H_
 
 #include <stdint.h>
+#include <stddef.h>
 
 // commands
 #define CMD_R_REGISTER          (uint8_t)0x00 // 000A AAAA
@@ -181,17 +182,70 @@ typedef union
 } t_nRF_CD; // Carrier Detect.
 
 
+typedef union
+{
+  uint8_t buf[5];
+  uint8_t addr;
+} t_nRF_RX_ADDR_P0; // Receive address data pipe 0. 5 Bytes maximum length.
+
+typedef union
+{
+  uint8_t buf[5];
+  uint8_t addr;
+} t_nRF_RX_ADDR_P1; // Receive address data pipe 1. 5 Bytes maximum length.
+
 typedef struct
 {
+  uint8_t byte;
+} t_nRF_RX_ADDR_P2; // Receive address data pipe 2. Only LSB
+
+typedef struct
+{
+  uint8_t byte;
+} t_nRF_RX_ADDR_P3; // Receive address data pipe 3. Only LSB.
+
+typedef struct
+{
+  uint8_t byte;
+} t_nRF_RX_ADDR_P4; // Receive address data pipe 4. Only LSB
+
+typedef struct
+{
+  uint8_t byte;
+} t_nRF_RX_ADDR_P5; // Receive address data pipe 5. Only LSB.
+
+typedef union
+{
+  uint8_t buf[5];
   uint8_t addr;
-  uint8_t *reg_union;
+} t_nRF_TX_ADDR; // Transmit address. Used for a PTX device only
+
+typedef union
+{
+  struct
+  {
+    unsigned RX_PW_Px  : 6;
+    unsigned Reserved  : 2;
+  } RX_PW_Px;
+  uint8_t byte;
+} t_nRF_RX_PW_Px; // Number of bytes in RX payload in data pipe x (1 to 32 bytes).
+
+
+// структура для реализации "полиморфизма"
+typedef struct
+{
+  uint8_t addr; // адрес регистра
+  uint8_t *reg_union; // указатель на структуру данных регистра
+  uint8_t size; // размер сруктуры данных в байтах
+  void *next_register; // указатель на следующий регистр
 } t_register;
 
-#define REGISTERS_COUNT   10u
+
+//#define REGISTERS_COUNT   14u
 typedef struct
 {
-  t_nRfConfig       nRfConfigStruct;
-  t_register        nRfConfigReg;
+  t_nRfConfig       nRfConfigStruct; // структура данных регистра
+  t_register        nRfConfigReg; // регистр, содержит адрес регистра и указатель на структуру данных
 
   t_nRF_EN_AA       nRfEnAaStruct;
   t_register        nRfEnAaReg;
@@ -219,9 +273,24 @@ typedef struct
 
   t_nRF_CD          nRfCdStruct;
   t_register        nRfCdReg;
+  
+  t_nRF_RX_ADDR_P0  nRfRxAddrP0Struct;
+  t_register        nRfRxAddrP0Reg;
+  
+  t_nRF_RX_ADDR_P1  nRfRxAddrP1Struct;
+  t_register        nRfRxAddrP1Reg;
 
-  uint8_t pollingCounter;
-  t_register *PollingRegistersArray[REGISTERS_COUNT];
+  t_nRF_TX_ADDR     nRfTxAddrStruct;
+  t_register        nRfTxAddrReg;
+  
+  t_nRF_RX_PW_Px    nRfRxPwP1Struct;
+  t_register        nRfRxPwP1Reg;
+
+//  uint8_t pollingCounter;
+//  t_register *PollingRegistersArray[REGISTERS_COUNT];
+  t_register *PollingRegistersList;
+  t_register *PollingCurrentRegister;
+  
 
   void (*csnSetHi)(void);
   void (*csnSetLo)(void);
