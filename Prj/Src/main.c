@@ -44,7 +44,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+t_nRF24L01 nRF_0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -55,14 +55,10 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
-
-/**
-  * @brief  The application entry point.
-  * @retval int
-  */
-
+void CsSetLo(void)
+{ HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET); }
+void CsSetHi(void)
+{ HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET); }
 
 void CsnSetLo(void)
 { HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_RESET); }
@@ -78,13 +74,16 @@ void SPI_Receive(uint8_t *data, uint16_t size)
 {
   HAL_SPI_Receive(&hspi1, data, size, 100);
 }
+/* USER CODE END 0 */
 
-t_nRF24L01 nRF_0;
-
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+uint8_t buf[32] = {0xFF};
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -112,12 +111,13 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  nRF_Setup(&nRF_0, CsnSetHi, CsnSetLo, SPI_Transmit, SPI_Receive);
-
-  while (1)
+  nRF_Setup(&nRF_0, CsSetHi, CsSetLo, CsnSetHi, CsnSetLo, SPI_Transmit, SPI_Receive);
+  nRf_Send(&nRF_0, buf, 32);
+  while(1)
   {
     nRfPollingRegisters(&nRF_0);
-
+    
+//    HAL_Delay(2000);
 //    if(nRF_0.nRfConfigStruct.CONFIG.PWR_UP == 0)
 //    {
 //      nRF_0.nRfConfigStruct.CONFIG.PWR_UP = 1;

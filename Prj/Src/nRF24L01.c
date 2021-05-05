@@ -1,5 +1,7 @@
 #include "nRF24L01.h"
 
+void nRfRegisterRead(t_nRF24L01 *p_nRf, t_register *p_reg);
+void nRfRegisterWrite(t_nRF24L01 *p_nRf, t_register *p_reg);
 
 // добавляет регистр в список для автоматического опроса регистров
 void nRF_AddPollingRegister(t_nRF24L01 *p_nRF, t_register *p_reg)
@@ -98,6 +100,7 @@ void nRF_RegistersInit(t_nRF24L01 *p_nRF)
 //-----------------------------------------------------------------------------
 void nRF_ModuleInit(t_nRF24L01 *p_nRF)
 {
+  // CE_RESET
   nRfRegisterRead(p_nRF, &p_nRF->nRfConfigReg); // нужно произвести чтение, чтобы модуль ожил
 // CONFIG 0x0A - 1010 - EN_CRC, PWR_UP
   p_nRF->nRfConfigStruct.CONFIG.EN_CRC = 1;
@@ -129,6 +132,7 @@ void nRF_ModuleInit(t_nRF24L01 *p_nRF)
   p_nRF->nRfStatusStruct.STATUS.RX_DR = 1;
   p_nRF->nRfStatusStruct.STATUS.MAX_RT = 1;
   nRfRegisterWrite(p_nRF, &p_nRF->nRfStatusReg);
+// RF_CH - 76 - частота 2476 МГц
 // RF_SETUP 0x06 - 1Mbit, 0dBm - 110
   p_nRF->nRfRfSetupStruct.byte = 0;
   p_nRF->nRfRfSetupStruct.RF_SETUP.RF_DR = 0;
@@ -142,11 +146,11 @@ void nRF_ModuleInit(t_nRF24L01 *p_nRF)
   p_nRF->nRfTxAddrStruct.buf[4] = 0x05;
   nRfRegisterWrite(p_nRF, &p_nRF->nRfTxAddrReg);
 // RX_ADDR_P1 - адрес приёмника
-  p_nRF->nRfRxAddrP1Struct.buf[0] = 0x10;
-  p_nRF->nRfRxAddrP1Struct.buf[1] = 0x20;
-  p_nRF->nRfRxAddrP1Struct.buf[2] = 0x30;
-  p_nRF->nRfRxAddrP1Struct.buf[3] = 0x40;
-  p_nRF->nRfRxAddrP1Struct.buf[4] = 0x50;
+  p_nRF->nRfRxAddrP1Struct.buf[0] = 0x01;
+  p_nRF->nRfRxAddrP1Struct.buf[1] = 0x02;
+  p_nRF->nRfRxAddrP1Struct.buf[2] = 0x03;
+  p_nRF->nRfRxAddrP1Struct.buf[3] = 0x04;
+  p_nRF->nRfRxAddrP1Struct.buf[4] = 0x05;
   nRfRegisterWrite(p_nRF, &p_nRF->nRfRxAddrP1Reg);
 // RX_PW_P1 - Number of bytes in RX payload in data pipe 1 (1 to 32 bytes).
   p_nRF->nRfRxPwP1Struct.byte = 0;
@@ -155,6 +159,8 @@ void nRF_ModuleInit(t_nRF24L01 *p_nRF)
 }
 //-----------------------------------------------------------------------------
 void nRF_Setup(t_nRF24L01 *p_nRF,
+              void (*ceSetHi)(void),
+              void (*ceSetLo)(void),
               void (*csnSetHi)(void),
               void (*csnSetLo)(void),
               void (*spiTransmit)(uint8_t *data, uint16_t size),
@@ -162,6 +168,8 @@ void nRF_Setup(t_nRF24L01 *p_nRF,
 {
   nRF_RegistersInit(p_nRF);
 
+  p_nRF->ceSetHi = ceSetHi;
+  p_nRF->ceSetLo = ceSetLo;
   p_nRF->csnSetHi = csnSetHi;
   p_nRF->csnSetLo = csnSetLo;
   p_nRF->spiReceive = spiReceive;
@@ -179,6 +187,52 @@ void nRfPollingRegisters(t_nRF24L01 *p_nRf)
   else
     p_nRf->PollingCurrentRegister = p_nRf->PollingCurrentRegister->next_register;
   nRfRegisterRead(p_nRf, p_reg);
+}
+//-----------------------------------------------------------------------------
+void nRf_SwitchTransmitMode(t_nRF24L01 *p_nRf)
+{
+// write buf: TX_ADDR, TX_ADDRESS, TX_ADDR_WIDTH
+// CE_RESET;
+  p_nRf->ceSetLo();
+// FLUSH_RX
+// FLUSH_TX
+}
+void nRf_Transmit(t_nRF24L01 *p_nRf, uint8_t addr, uint8_t *p_buf, uint8_t size)
+{
+// CE_RESET
+  p_nRf->ceSetLo();
+// CS_ON
+  p_nRf->csnSetLo();
+// SPI_transmit: addr
+  p_nRf->spiTransmit(&addr, 1);
+// delay 1us
+// SPI transmit: p_buf, size
+  p_nRf->spiTransmit(p_buf, size);
+// CS_OFF
+  p_nRf->csnSetHi();
+// CE_SET
+  p_nRf->ceSetHi();
+}
+void nRf_Send(t_nRF24L01 *p_nRf, uint8_t *p_buf, uint8_t size)
+{
+  uint16_t tmp = 0;
+// NRF24L01_TX_MODE(p_buf)
+  nRf_SwitchTransmitMode(p_nRf);
+// CONFIG set PWR_UP, reset PRIM_RX
+  nRfRegisterRead(p_nRf, &p_nRf->nRfConfigReg);
+  p_nRf->nRfConfigStruct.CONFIG.PWR_UP = 1;
+  p_nRf->nRfConfigStruct.CONFIG.PRIM_RX = 0;
+  nRfRegisterWrite(p_nRf, &p_nRf->nRfConfigReg);
+// delay 150 us
+  //tmp = 0xFFFF; while(--tmp);
+// nRf_Transmit(uint8_t addr, uint8_t *p_buf, uint8_t size)
+  nRf_Transmit(p_nRf, CMD_W_TX_PAYLOAD, p_buf, size);
+// CE_SET
+  p_nRf->ceSetHi();
+// delay 10us
+  tmp = 0xFFFF; while(--tmp);
+// CE_RESET
+  //p_nRf->ceSetLo();
 }
 //-----------------------------------------------------------------------------
 void nRfRegisterRead(t_nRF24L01 *p_nRf, t_register *p_reg)
