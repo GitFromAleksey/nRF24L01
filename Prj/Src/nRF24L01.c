@@ -2,6 +2,7 @@
 
 void nRfRegisterRead(t_nRF24L01 *p_nRf, t_register *p_reg);
 void nRfRegisterWrite(t_nRF24L01 *p_nRf, t_register *p_reg);
+void nRf_WriteCMD(t_nRF24L01 *p_nRf, uint8_t cmd, uint8_t *p_data, uint8_t size);
 
 // добавляет регистр в список для автоматического опроса регистров
 void nRF_AddPollingRegister(t_nRF24L01 *p_nRF, t_register *p_reg)
@@ -96,6 +97,16 @@ void nRF_RegistersInit(t_nRF24L01 *p_nRF)
   p_nRF->nRfRxPwP1Reg.reg_union = &p_nRF->nRfRxPwP1Struct.byte;
   p_nRF->nRfRxPwP1Reg.size = sizeof(p_nRF->nRfRxPwP1Struct.byte);
   nRF_AddPollingRegister(p_nRF, &p_nRF->nRfRxPwP1Reg);
+
+  p_nRF->nRfDynpdReg.addr = REG_DYNPD;
+  p_nRF->nRfDynpdReg.reg_union = &p_nRF->nRfDynpdStruct.byte;
+  p_nRF->nRfDynpdReg.size = sizeof(p_nRF->nRfDynpdStruct.byte);
+  nRF_AddPollingRegister(p_nRF, &p_nRF->nRfDynpdReg);
+
+  p_nRF->nRfFeaturesReg.addr = REG_FEATURE;
+  p_nRF->nRfFeaturesReg.reg_union = &p_nRF->nRfFeaturesStruct.byte;
+  p_nRF->nRfFeaturesReg.size = sizeof(p_nRF->nRfFeaturesStruct.byte);
+  nRF_AddPollingRegister(p_nRF, &p_nRF->nRfFeaturesReg);
 }
 //-----------------------------------------------------------------------------
 void nRF_ModuleInit(t_nRF24L01 *p_nRF)
@@ -103,11 +114,12 @@ void nRF_ModuleInit(t_nRF24L01 *p_nRF)
   // CE_RESET
   nRfRegisterRead(p_nRF, &p_nRF->nRfConfigReg); // нужно произвести чтение, чтобы модуль ожил
 // CONFIG 0x0A - 1010 - EN_CRC, PWR_UP
+  p_nRF->nRfConfigStruct.byte = 0;
   p_nRF->nRfConfigStruct.CONFIG.EN_CRC = 1;
   p_nRF->nRfConfigStruct.CONFIG.PWR_UP = 1;
   nRfRegisterWrite(p_nRF, &p_nRF->nRfConfigReg);
 // pause 5ms
-// EN_AA 0x02 - 10 - ENAA_P1
+// EN_AA 0x02 - 10 - ENAA_P1 - Enable ‘Auto Acknowledgment’
   p_nRF->nRfEnAaStruct.byte = 0;
   p_nRF->nRfEnAaStruct.en_aa.ENAA_P1 = 1;
   nRfRegisterWrite(p_nRF, &p_nRF->nRfEnAaReg);
@@ -117,7 +129,7 @@ void nRF_ModuleInit(t_nRF24L01 *p_nRF)
   nRfRegisterWrite(p_nRF, &p_nRF->nRfEnRxAddrReg);
 // SETUP_AW 0x01 - RX/TX Address field width '01' - 3 bytes 
   p_nRF->nRfSetupAwStruct.byte = 0;
-  p_nRF->nRfSetupAwStruct.SETUP_AW.AW = 0x01;
+  p_nRF->nRfSetupAwStruct.SETUP_AW.AW = 3;
   nRfRegisterWrite(p_nRF, &p_nRF->nRfSetupAwReg);
 // SETUP_RETR 0x5F - 1011111 - ARD(Auto Retransmit Delay), ARC(Auto Retransmit Count)
   p_nRF->nRfSetupRetrStruct.byte = 0;
@@ -125,7 +137,11 @@ void nRF_ModuleInit(t_nRF24L01 *p_nRF)
   p_nRF->nRfSetupRetrStruct.SETUP_RETR.ARC = 15;
   nRfRegisterWrite(p_nRF, &p_nRF->nRfSetupRetrReg);
 // FEATURE 0
+  p_nRF->nRfFeaturesStruct.byte = 0;
+  nRfRegisterWrite(p_nRF, &p_nRF->nRfFeaturesReg);
 // DYNPD 0
+  p_nRF->nRfDynpdStruct.byte = 0;
+  nRfRegisterWrite(p_nRF, &p_nRF->nRfDynpdReg);
 // STATUS 0x70 - reset irq flags - 1110000 ?
   p_nRF->nRfStatusStruct.byte = 0;
   p_nRF->nRfStatusStruct.STATUS.TX_DS = 1;
@@ -133,29 +149,40 @@ void nRF_ModuleInit(t_nRF24L01 *p_nRF)
   p_nRF->nRfStatusStruct.STATUS.MAX_RT = 1;
   nRfRegisterWrite(p_nRF, &p_nRF->nRfStatusReg);
 // RF_CH - 76 - частота 2476 МГц
+  p_nRF->nRfRfChStruct.RF_CH.RF_CH = 2;//76;
+  nRfRegisterWrite(p_nRF, &p_nRF->nRfRfChReg);
 // RF_SETUP 0x06 - 1Mbit, 0dBm - 110
   p_nRF->nRfRfSetupStruct.byte = 0;
-  p_nRF->nRfRfSetupStruct.RF_SETUP.RF_DR = 0;
+  p_nRF->nRfRfSetupStruct.RF_SETUP.RF_DR_HIGH = 1;
   p_nRF->nRfRfSetupStruct.RF_SETUP.RF_PWR = 3;
   nRfRegisterWrite(p_nRF, &p_nRF->nRfRfSetupReg);
 // TX_ADDR адрес передатчика
-  p_nRF->nRfTxAddrStruct.buf[0] = 0x01;
-  p_nRF->nRfTxAddrStruct.buf[1] = 0x02;
-  p_nRF->nRfTxAddrStruct.buf[2] = 0x03;
-  p_nRF->nRfTxAddrStruct.buf[3] = 0x04;
-  p_nRF->nRfTxAddrStruct.buf[4] = 0x05;
+  p_nRF->nRfTxAddrStruct.buf[0] = 0xA5;
+  p_nRF->nRfTxAddrStruct.buf[1] = 0xA5;
+  p_nRF->nRfTxAddrStruct.buf[2] = 0xA5;
+  p_nRF->nRfTxAddrStruct.buf[3] = 0xA5;
+  p_nRF->nRfTxAddrStruct.buf[4] = 0xA5;
   nRfRegisterWrite(p_nRF, &p_nRF->nRfTxAddrReg);
+// RX_ADDR_P0 - адрес приёмника
+  p_nRF->nRfRxAddrP0Struct.buf[0] = 0xA5;
+  p_nRF->nRfRxAddrP0Struct.buf[1] = 0xA5;
+  p_nRF->nRfRxAddrP0Struct.buf[2] = 0xA5;
+  p_nRF->nRfRxAddrP0Struct.buf[3] = 0xA5;
+  p_nRF->nRfRxAddrP0Struct.buf[4] = 0xA5;
+  nRfRegisterWrite(p_nRF, &p_nRF->nRfRxAddrP0Reg);
 // RX_ADDR_P1 - адрес приёмника
-  p_nRF->nRfRxAddrP1Struct.buf[0] = 0x01;
-  p_nRF->nRfRxAddrP1Struct.buf[1] = 0x02;
-  p_nRF->nRfRxAddrP1Struct.buf[2] = 0x03;
-  p_nRF->nRfRxAddrP1Struct.buf[3] = 0x04;
-  p_nRF->nRfRxAddrP1Struct.buf[4] = 0x05;
+  p_nRF->nRfRxAddrP1Struct.buf[0] = 0xA5;
+  p_nRF->nRfRxAddrP1Struct.buf[1] = 0xA5;
+  p_nRF->nRfRxAddrP1Struct.buf[2] = 0xA5;
+  p_nRF->nRfRxAddrP1Struct.buf[3] = 0xA5;
+  p_nRF->nRfRxAddrP1Struct.buf[4] = 0xA5;
   nRfRegisterWrite(p_nRF, &p_nRF->nRfRxAddrP1Reg);
 // RX_PW_P1 - Number of bytes in RX payload in data pipe 1 (1 to 32 bytes).
   p_nRF->nRfRxPwP1Struct.byte = 0;
-  p_nRF->nRfRxPwP1Struct.RX_PW_Px.RX_PW_Px = 32;
+  p_nRF->nRfRxPwP1Struct.RX_PW_Px.RX_PW_Px = 2;
   nRfRegisterWrite(p_nRF, &p_nRF->nRfRxPwP1Reg);
+  
+  nRf_WriteCMD(p_nRF, CMD_ACTIVATE, NULL, 0);
 }
 //-----------------------------------------------------------------------------
 void nRF_Setup(t_nRF24L01 *p_nRF,
@@ -175,7 +202,23 @@ void nRF_Setup(t_nRF24L01 *p_nRF,
   p_nRF->spiReceive = spiReceive;
   p_nRF->spiTransmit = spiTransmit;
 
+  p_nRF->csnSetHi();
+  p_nRF->ceSetLo();
+
   nRF_ModuleInit(p_nRF);
+}
+//-----------------------------------------------------------------------------
+void nRf_WriteCMD(t_nRF24L01 *p_nRf, uint8_t cmd, uint8_t *p_data, uint8_t size)
+{
+//  uint16_t tmp = 0;
+  p_nRf->csnSetLo();
+  p_nRf->spiTransmit(&cmd, 1);
+  if(p_data != NULL)
+  {
+//    tmp = 0xFFFF; while(--tmp);
+    p_nRf->spiTransmit(p_data, size);
+  }
+  p_nRf->csnSetHi();
 }
 //-----------------------------------------------------------------------------
 // функция автоматического опроса регистров из списка
@@ -187,6 +230,27 @@ void nRfPollingRegisters(t_nRF24L01 *p_nRf)
   else
     p_nRf->PollingCurrentRegister = p_nRf->PollingCurrentRegister->next_register;
   nRfRegisterRead(p_nRf, p_reg);
+  
+  if(p_nRf->nRfStatusStruct.STATUS.TX_DS == 1)
+  {
+    p_nRf->nRfStatusStruct.STATUS.TX_DS = 1;
+    nRfRegisterWrite(p_nRf, &p_nRf->nRfStatusReg);
+    nRf_WriteCMD(p_nRf, CMD_FLUSH_TX, NULL, 0);
+  }
+}
+//-----------------------------------------------------------------------------
+void nRf_SwitchReceiveMode(t_nRF24L01 *p_nRf)
+{
+  nRfRegisterRead(p_nRf, &p_nRf->nRfConfigReg);
+  p_nRf->nRfConfigStruct.CONFIG.PRIM_RX = 1;
+  p_nRf->nRfConfigStruct.CONFIG.PWR_UP = 1;
+  nRfRegisterWrite(p_nRf, &p_nRf->nRfConfigReg);
+  p_nRf->ceSetHi();
+  
+  // FLUSH_RX
+//  nRf_WriteCMD(p_nRf, CMD_FLUSH_RX, NULL, 0);
+// FLUSH_TX
+//  nRf_WriteCMD(p_nRf, CMD_FLUSH_TX, NULL, 0);
 }
 //-----------------------------------------------------------------------------
 void nRf_SwitchTransmitMode(t_nRF24L01 *p_nRf)
@@ -195,20 +259,24 @@ void nRf_SwitchTransmitMode(t_nRF24L01 *p_nRf)
 // CE_RESET;
   p_nRf->ceSetLo();
 // FLUSH_RX
+  nRf_WriteCMD(p_nRf, CMD_FLUSH_RX, NULL, 0);
 // FLUSH_TX
+  nRf_WriteCMD(p_nRf, CMD_FLUSH_TX, NULL, 0);
 }
 void nRf_Transmit(t_nRF24L01 *p_nRf, uint8_t addr, uint8_t *p_buf, uint8_t size)
 {
+  uint16_t tmp = 0;
 // CE_RESET
   p_nRf->ceSetLo();
-// CS_ON
+// CSN_ON
   p_nRf->csnSetLo();
 // SPI_transmit: addr
   p_nRf->spiTransmit(&addr, 1);
 // delay 1us
+tmp = 0xFFFF; while(--tmp);
 // SPI transmit: p_buf, size
   p_nRf->spiTransmit(p_buf, size);
-// CS_OFF
+// CSN_OFF
   p_nRf->csnSetHi();
 // CE_SET
   p_nRf->ceSetHi();
@@ -216,6 +284,8 @@ void nRf_Transmit(t_nRF24L01 *p_nRf, uint8_t addr, uint8_t *p_buf, uint8_t size)
 void nRf_Send(t_nRF24L01 *p_nRf, uint8_t *p_buf, uint8_t size)
 {
   uint16_t tmp = 0;
+  if(p_nRf->nRfStatusStruct.STATUS.TX_DS == 1)
+    return;
 // NRF24L01_TX_MODE(p_buf)
   nRf_SwitchTransmitMode(p_nRf);
 // CONFIG set PWR_UP, reset PRIM_RX
@@ -224,13 +294,13 @@ void nRf_Send(t_nRF24L01 *p_nRf, uint8_t *p_buf, uint8_t size)
   p_nRf->nRfConfigStruct.CONFIG.PRIM_RX = 0;
   nRfRegisterWrite(p_nRf, &p_nRf->nRfConfigReg);
 // delay 150 us
-  //tmp = 0xFFFF; while(--tmp);
-// nRf_Transmit(uint8_t addr, uint8_t *p_buf, uint8_t size)
-  nRf_Transmit(p_nRf, CMD_W_TX_PAYLOAD, p_buf, size);
+  tmp = 0xFFFF; while(--tmp);
+//  nRf_Transmit(p_nRf, CMD_W_TX_PAYLOAD, p_buf, size);
+  nRf_WriteCMD(p_nRf, CMD_W_TX_PAYLOAD, p_buf, size);
 // CE_SET
   p_nRf->ceSetHi();
 // delay 10us
-  tmp = 0xFFFF; while(--tmp);
+  //tmp = 0xFFFF; while(--tmp);
 // CE_RESET
   //p_nRf->ceSetLo();
 }

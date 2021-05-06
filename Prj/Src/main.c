@@ -44,7 +44,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-t_nRF24L01 nRF_0;
+t_nRF24L01 nRF_1;
+t_nRF24L01 nRF_2;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -55,10 +56,11 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+// module 1
 void CsSetLo(void)
-{ HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET); }
+{ HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_RESET); }
 void CsSetHi(void)
-{ HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET); }
+{ HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_SET); }
 
 void CsnSetLo(void)
 { HAL_GPIO_WritePin(CSN_GPIO_Port, CSN_Pin, GPIO_PIN_RESET); }
@@ -69,10 +71,28 @@ void SPI_Transmit(uint8_t *data, uint16_t size)
 {
   HAL_SPI_Transmit(&hspi1, data, size, 100);
 }
-
 void SPI_Receive(uint8_t *data, uint16_t size)
 {
   HAL_SPI_Receive(&hspi1, data, size, 100);
+}
+// module 2
+void Cs2SetLo(void)
+{ HAL_GPIO_WritePin(CE_2_GPIO_Port, CE_2_Pin, GPIO_PIN_RESET); }
+void Cs2SetHi(void)
+{ HAL_GPIO_WritePin(CE_2_GPIO_Port, CE_2_Pin, GPIO_PIN_SET); }
+
+void Csn2SetLo(void)
+{ HAL_GPIO_WritePin(CSN_2_GPIO_Port, CSN_2_Pin, GPIO_PIN_RESET); }
+void Csn2SetHi(void)
+{ HAL_GPIO_WritePin(CSN_2_GPIO_Port, CSN_2_Pin, GPIO_PIN_SET); }
+
+void SPI2_Transmit(uint8_t *data, uint16_t size)
+{
+  HAL_SPI_Transmit(&hspi2, data, size, 100);
+}
+void SPI2_Receive(uint8_t *data, uint16_t size)
+{
+  HAL_SPI_Receive(&hspi2, data, size, 100);
 }
 /* USER CODE END 0 */
 
@@ -83,7 +103,7 @@ void SPI_Receive(uint8_t *data, uint16_t size)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-uint8_t buf[32] = {0xFF};
+uint8_t buf[2] = {0xF1, 0xF2};
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -105,25 +125,47 @@ uint8_t buf[32] = {0xFF};
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI1_Init();
+  MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  nRF_Setup(&nRF_0, CsSetHi, CsSetLo, CsnSetHi, CsnSetLo, SPI_Transmit, SPI_Receive);
-  nRf_Send(&nRF_0, buf, 32);
+  HAL_Delay(100);
+  
+  HAL_GPIO_WritePin(LED_PC13_GPIO_Port, LED_PC13_Pin, GPIO_PIN_SET);
+  nRF_Setup(&nRF_1, CsSetHi, CsSetLo, CsnSetHi, CsnSetLo, SPI_Transmit, SPI_Receive);
+  nRF_Setup(&nRF_2, Cs2SetHi, Cs2SetLo, Csn2SetHi, Csn2SetLo, SPI2_Transmit, SPI2_Receive);
+  nRf_SwitchReceiveMode(&nRF_2);
+  
+  HAL_Delay(100);
+  
   while(1)
   {
-    nRfPollingRegisters(&nRF_0);
-    
+    if(nRF_1.nRfStatusStruct.STATUS.TX_DS == 1)
+    {
+//      nRf_SwitchReceiveMode(&nRF_2);
+      HAL_GPIO_WritePin(LED_PC13_GPIO_Port, LED_PC13_Pin, GPIO_PIN_RESET);
+    }
+    else
+    {
+//      nRF_2.ceSetLo();
+      HAL_GPIO_WritePin(LED_PC13_GPIO_Port, LED_PC13_Pin, GPIO_PIN_SET);
+    }
+
+    nRf_Send(&nRF_1, buf, 2);
+
+    nRfPollingRegisters(&nRF_1);
+
+    nRfPollingRegisters(&nRF_2);
 //    HAL_Delay(2000);
 //    if(nRF_0.nRfConfigStruct.CONFIG.PWR_UP == 0)
 //    {
 //      nRF_0.nRfConfigStruct.CONFIG.PWR_UP = 1;
 //      nRfRegisterWrite(&nRF_0, &nRF_0.nRfConfigReg);
 //    }
-    //HAL_Delay(100);
+//    HAL_Delay(10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

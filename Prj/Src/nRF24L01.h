@@ -136,11 +136,18 @@ typedef union
 {
   struct
   {
-    unsigned LNA_HCURR  : 1; //  Setup LNA gain
-    unsigned RF_PWR     : 2; // Set RF output power in TX mode
-    unsigned RF_DR      : 1; // Air Data Rate(‘0’ – 1Mbps, ‘1’ – 2Mbps)
-    unsigned PLL_LOCK   : 1; // Force PLL lock signal. Only used in test
-    unsigned reserved   : 3;
+//    unsigned LNA_HCURR  : 1; //  Setup LNA gain
+//    unsigned RF_PWR     : 2; // Set RF output power in TX mode
+//    unsigned RF_DR      : 1; // Air Data Rate(‘0’ – 1Mbps, ‘1’ – 2Mbps)
+//    unsigned PLL_LOCK   : 1; // Force PLL lock signal. Only used in test
+//    unsigned reserved   : 3;
+    unsigned Obsolete   : 1; // Don't care
+    unsigned RF_PWR     : 2; // TX output power 
+    unsigned RF_DR_HIGH : 1; // speed data rates high bit
+    unsigned PLL_LOCK   : 1;
+    unsigned RF_DR_LOW  : 1; // speed data rates low bit 
+    unsigned Reserved   : 1;
+    unsigned CONT_WAVE  : 1; // Enables continuous carrier transmit when high
   } RF_SETUP;
   uint8_t byte;
 } t_nRF_RF_SETUP; // RF Setup Register
@@ -151,9 +158,9 @@ typedef union
   {
     unsigned TX_FULL  : 1; // TX FIFO full flag. (1: TX FIFO full. , 0: Available locations in TX FIFO.)
     unsigned RX_P_NO  : 3; // Data pipe number for the payload available for reading from RX_FIFO
-    unsigned MAX_RT   : 1; // Maximum number of TX retransmits interrupt
-    unsigned TX_DS    : 1; // Data Sent TX FIFO interrupt.
-    unsigned RX_DR    : 1; // Data Ready RX FIFO interrupt.
+    unsigned MAX_RT   : 1; // Maximum number of TX retransmits interrupt. Write 1 to clear bit
+    unsigned TX_DS    : 1; // Data Sent TX FIFO interrupt. Write 1 to clear bit
+    unsigned RX_DR    : 1; // Data Ready RX FIFO interrupt. Write 1 to clear bit
     unsigned reserved : 1;
   } STATUS;
   uint8_t byte;
@@ -231,6 +238,33 @@ typedef union
 } t_nRF_RX_PW_Px; // Number of bytes in RX payload in data pipe x (1 to 32 bytes).
 
 
+typedef union
+{
+  struct
+  {
+    unsigned DPL_P0   : 1; // Enable dyn. payload length data pipe
+    unsigned DPL_P1   : 1;
+    unsigned DPL_P2   : 1;
+    unsigned DPL_P3   : 1;
+    unsigned DPL_P4   : 1;
+    unsigned DPL_P5   : 1;
+    unsigned Reserved : 2;
+  } DYNPD;
+  uint8_t byte;
+} t_nRF_DYNPD; // Enable dynamic payload length
+
+typedef union
+{
+  struct
+  {
+    unsigned EN_DYN_ACK : 1; // Enable dyn. payload length data pipe
+    unsigned EN_ACK_PAY : 1;
+    unsigned EN_DPL     : 1;
+    unsigned Reserved   : 5;
+  } FEATURE;
+  uint8_t byte;
+} t_nRF_FEATURE; // Enable dynamic payload length
+
 // структура для реализации "полиморфизма"
 typedef struct
 {
@@ -285,6 +319,12 @@ typedef struct
   
   t_nRF_RX_PW_Px    nRfRxPwP1Struct;
   t_register        nRfRxPwP1Reg;
+  
+  t_nRF_DYNPD       nRfDynpdStruct;
+  t_register        nRfDynpdReg;
+
+  t_nRF_FEATURE     nRfFeaturesStruct;
+  t_register        nRfFeaturesReg;
 
 //  uint8_t pollingCounter;
 //  t_register *PollingRegistersArray[REGISTERS_COUNT];
@@ -312,6 +352,8 @@ void nRfPollingRegisters(t_nRF24L01 *p_nRf);
 //void nRfRegisterRead(t_nRF24L01 *p_nRf, t_register *p_reg);
 //void nRfRegisterWrite(t_nRF24L01 *p_nRf, t_register *p_reg);
 void nRf_Send(t_nRF24L01 *p_nRf, uint8_t *p_buf, uint8_t size);
+
+void nRf_SwitchReceiveMode(t_nRF24L01 *p_nRf);
 
 
 #endif /* _N_RF24L01_H_ */
