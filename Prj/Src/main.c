@@ -103,6 +103,9 @@ void SPI2_Receive(uint8_t *data, uint16_t size)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+  uint32_t ticks = HAL_GetTick();
+  uint16_t wr_counter = 0;
+  uint16_t rd_counter = 0;
 uint8_t buf[2] = {0xF1, 0xF2};
   /* USER CODE END 1 */
 
@@ -137,10 +140,11 @@ uint8_t buf[2] = {0xF1, 0xF2};
   HAL_GPIO_WritePin(LED_PC13_GPIO_Port, LED_PC13_Pin, GPIO_PIN_SET);
   nRF_Setup(&nRF_1, CsSetHi, CsSetLo, CsnSetHi, CsnSetLo, SPI_Transmit, SPI_Receive);
   nRF_Setup(&nRF_2, Cs2SetHi, Cs2SetLo, Csn2SetHi, Csn2SetLo, SPI2_Transmit, SPI2_Receive);
-  nRf_SwitchReceiveMode(&nRF_2);
-  
-  HAL_Delay(100);
-  
+//  HAL_Delay(1);
+//  nRf_SwitchReceiveMode(&nRF_2);
+//  HAL_Delay(1);
+    
+
   while(1)
   {
     if(nRF_1.nRfStatusStruct.STATUS.TX_DS == 1)
@@ -154,7 +158,14 @@ uint8_t buf[2] = {0xF1, 0xF2};
       HAL_GPIO_WritePin(LED_PC13_GPIO_Port, LED_PC13_Pin, GPIO_PIN_SET);
     }
 
-    nRf_Send(&nRF_1, buf, 2);
+    if( (HAL_GetTick() - ticks) > 100)
+    {
+//      if(nRF_2.nRfStatusStruct.STATUS.RX_P_NO == 1)
+//        nRf_ReadCMD(&nRF_2, CMD_R_RX_PAYLOAD, &buf[0], 2);
+      ticks = HAL_GetTick();
+      nRf_Send(&nRF_1, (uint8_t*)&wr_counter, 2);
+      ++wr_counter;
+    }
 
     nRfPollingRegisters(&nRF_1);
 

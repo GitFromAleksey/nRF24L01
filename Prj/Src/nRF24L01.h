@@ -258,8 +258,8 @@ typedef union
   struct
   {
     unsigned EN_DYN_ACK : 1; // Enable dyn. payload length data pipe
-    unsigned EN_ACK_PAY : 1;
-    unsigned EN_DPL     : 1;
+    unsigned EN_ACK_PAY : 1; // 
+    unsigned EN_DPL     : 1; // 
     unsigned Reserved   : 5;
   } FEATURE;
   uint8_t byte;
@@ -317,6 +317,9 @@ typedef struct
   t_nRF_TX_ADDR     nRfTxAddrStruct;
   t_register        nRfTxAddrReg;
   
+  t_nRF_RX_PW_Px    nRfRxPwP0Struct;
+  t_register        nRfRxPwP0Reg;
+  
   t_nRF_RX_PW_Px    nRfRxPwP1Struct;
   t_register        nRfRxPwP1Reg;
   
@@ -354,6 +357,6 @@ void nRfPollingRegisters(t_nRF24L01 *p_nRf);
 void nRf_Send(t_nRF24L01 *p_nRf, uint8_t *p_buf, uint8_t size);
 
 void nRf_SwitchReceiveMode(t_nRF24L01 *p_nRf);
-
+void nRf_ReadCMD(t_nRF24L01 *p_nRf, uint8_t cmd, uint8_t *p_data, uint8_t size);
 
 #endif /* _N_RF24L01_H_ */
