@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 // commands
 #define CMD_R_REGISTER          (uint8_t)0x00 // 000A AAAA
@@ -275,7 +276,7 @@ typedef struct
 } t_register;
 
 
-//#define REGISTERS_COUNT   14u
+
 typedef struct
 {
   t_nRfConfig       nRfConfigStruct; // структура данных регистра
@@ -329,34 +330,35 @@ typedef struct
   t_nRF_FEATURE     nRfFeaturesStruct;
   t_register        nRfFeaturesReg;
 
-//  uint8_t pollingCounter;
-//  t_register *PollingRegistersArray[REGISTERS_COUNT];
   t_register *PollingRegistersList;
   t_register *PollingCurrentRegister;
-  
+
+  bool isMaster;  // true - master, false - slave
+
   void (*ceSetHi)(void);
   void (*ceSetLo)(void);
   void (*csnSetHi)(void);
   void (*csnSetLo)(void);
   void (*spiTransmit)(uint8_t *data, uint16_t size);
   void (*spiReceive)(uint8_t *data, uint16_t size);
+  void (*ReceiveEventCallback)(uint8_t *data, uint16_t size);
 } t_nRF24L01;
 
 
-void nRF_Setup(t_nRF24L01 *p_nRF,
+void nRF_Setup(t_nRF24L01 *p_nRF, bool master,
               void (*ceSetHi)(void),
               void (*ceSetLo)(void),
               void (*csnSetHi)(void),
               void (*csnSetLo)(void),
               void (*spiTransmit)(uint8_t *data, uint16_t size),
-              void (*spiReceive)(uint8_t *data, uint16_t size));
+              void (*spiReceive)(uint8_t *data, uint16_t size),
+              void (*ReceiveEventCallback)(uint8_t *data, uint16_t size));
 
-void nRfPollingRegisters(t_nRF24L01 *p_nRf);
-//void nRfRegisterRead(t_nRF24L01 *p_nRf, t_register *p_reg);
-//void nRfRegisterWrite(t_nRF24L01 *p_nRf, t_register *p_reg);
+void nRf_RUN(t_nRF24L01 *p_nRf);
+
 void nRf_Send(t_nRF24L01 *p_nRf, uint8_t *p_buf, uint8_t size);
 
-void nRf_SwitchReceiveMode(t_nRF24L01 *p_nRf);
-void nRf_ReadCMD(t_nRF24L01 *p_nRf, uint8_t cmd, uint8_t *p_data, uint8_t size);
+//void nRf_SwitchReceiveMode(t_nRF24L01 *p_nRf);
+//void nRf_ReadCMD(t_nRF24L01 *p_nRf, uint8_t cmd, uint8_t *p_data, uint8_t size);
 
 #endif /* _N_RF24L01_H_ */

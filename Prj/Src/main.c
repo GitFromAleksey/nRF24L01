@@ -18,6 +18,7 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <string.h>
 #include "main.h"
 #include "spi.h"
 #include "gpio.h"
@@ -38,7 +39,8 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+#define LED_ON    HAL_GPIO_WritePin(LED_PC13_GPIO_Port, LED_PC13_Pin, GPIO_PIN_RESET);
+#define LED_OFF   HAL_GPIO_WritePin(LED_PC13_GPIO_Port, LED_PC13_Pin, GPIO_PIN_SET);
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -46,6 +48,11 @@
 /* USER CODE BEGIN PV */
 t_nRF24L01 nRF_1;
 t_nRF24L01 nRF_2;
+
+uint16_t wr_counter = 0;
+uint16_t rd_counter = 0;
+uint8_t wr_buf[32] = {0};
+uint8_t rd_buf[32] = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -94,6 +101,19 @@ void SPI2_Receive(uint8_t *data, uint16_t size)
 {
   HAL_SPI_Receive(&hspi2, data, size, 100);
 }
+
+void ReceiveEvent_1(uint8_t *data, uint16_t size)
+{
+
+}
+
+void ReceiveEvent_2(uint8_t *data, uint16_t size)
+{
+  LED_ON;
+  memcpy((void*)&rd_buf, data, size);
+  LED_OFF;
+//  rd_counter = *data;
+}
 /* USER CODE END 0 */
 
 /**
@@ -104,9 +124,12 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
   uint32_t ticks = HAL_GetTick();
-  uint16_t wr_counter = 0;
-  uint16_t rd_counter = 0;
-uint8_t buf[2] = {0xF1, 0xF2};
+  uint8_t i = 0;
+  for(i = 0; i < 32; ++i)
+  {
+    wr_buf[i] = rd_buf[i] = i;
+  }
+//uint8_t buf[2] = {0xF1, 0xF2};
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -138,54 +161,23 @@ uint8_t buf[2] = {0xF1, 0xF2};
   HAL_Delay(100);
   
   HAL_GPIO_WritePin(LED_PC13_GPIO_Port, LED_PC13_Pin, GPIO_PIN_SET);
-  nRF_Setup(&nRF_1, CsSetHi, CsSetLo, CsnSetHi, CsnSetLo, SPI_Transmit, SPI_Receive);
-  nRF_Setup(&nRF_2, Cs2SetHi, Cs2SetLo, Csn2SetHi, Csn2SetLo, SPI2_Transmit, SPI2_Receive);
-//  HAL_Delay(1);
-//  nRf_SwitchReceiveMode(&nRF_2);
-//  HAL_Delay(1);
-    
+  nRF_Setup(&nRF_1, true, CsSetHi, CsSetLo, CsnSetHi, CsnSetLo, SPI_Transmit, SPI_Receive, ReceiveEvent_1);
+  nRF_Setup(&nRF_2, false, Cs2SetHi, Cs2SetLo, Csn2SetHi, Csn2SetLo, SPI2_Transmit, SPI2_Receive, ReceiveEvent_2);
 
   while(1)
   {
-    if(nRF_1.nRfStatusStruct.STATUS.TX_DS == 1)
+    if( (HAL_GetTick() - ticks) > 1)
     {
-//      nRf_SwitchReceiveMode(&nRF_2);
-      HAL_GPIO_WritePin(LED_PC13_GPIO_Port, LED_PC13_Pin, GPIO_PIN_RESET);
-    }
-    else
-    {
-//      nRF_2.ceSetLo();
-      HAL_GPIO_WritePin(LED_PC13_GPIO_Port, LED_PC13_Pin, GPIO_PIN_SET);
-    }
-
-    if( (HAL_GetTick() - ticks) > 100)
-    {
-
-      if(nRF_2.nRfStatusStruct.STATUS.RX_P_NO == 1)
-      {
-        nRF_2.ceSetLo();
-        if(nRF_2.nRfStatusStruct.STATUS.RX_DR == 1)
-        {
-          nRf_ReadCMD(&nRF_2, CMD_R_RX_PAYLOAD, (uint8_t*)&rd_counter, 2);
-        }
-        nRF_2.ceSetHi();
-      }
-
       ticks = HAL_GetTick();
-      nRf_Send(&nRF_1, (uint8_t*)&wr_counter, 2);
+      memcpy(wr_buf, (void*)&wr_counter, 2);
+      memcpy(&wr_buf[30], (void*)&wr_counter, 2);
+      nRf_Send(&nRF_1, (uint8_t*)&wr_buf, 32);
       ++wr_counter;
     }
 
-    nRfPollingRegisters(&nRF_1);
+    nRf_RUN(&nRF_1);
+    nRf_RUN(&nRF_2);
 
-    nRfPollingRegisters(&nRF_2);
-//    HAL_Delay(2000);
-//    if(nRF_0.nRfConfigStruct.CONFIG.PWR_UP == 0)
-//    {
-//      nRF_0.nRfConfigStruct.CONFIG.PWR_UP = 1;
-//      nRfRegisterWrite(&nRF_0, &nRF_0.nRfConfigReg);
-//    }
-//    HAL_Delay(10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
