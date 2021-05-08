@@ -139,7 +139,7 @@ void nRF_ModuleInit(t_nRF24L01 *p_nRf)
   nRfRegisterWrite(p_nRf, &p_nRf->nRfEnRxAddrReg);
 // SETUP_AW 0x01 - RX/TX Address field width '01' - 3 bytes 
   p_nRf->nRfSetupAwStruct.byte = 0;
-  p_nRf->nRfSetupAwStruct.SETUP_AW.AW = 1;
+  p_nRf->nRfSetupAwStruct.SETUP_AW.AW = 3;
   nRfRegisterWrite(p_nRf, &p_nRf->nRfSetupAwReg);
 // SETUP_RETR 0x5F - 1011111 - ARD(Auto Retransmit Delay), ARC(Auto Retransmit Count)
   p_nRf->nRfSetupRetrStruct.byte = 0;
@@ -147,8 +147,8 @@ void nRF_ModuleInit(t_nRF24L01 *p_nRf)
   p_nRf->nRfSetupRetrStruct.SETUP_RETR.ARC = 15;
   nRfRegisterWrite(p_nRf, &p_nRf->nRfSetupRetrReg);
 // ACTIVATE
-  tmp = 0x73;
-  nRf_WriteCMD(p_nRf, CMD_ACTIVATE, &tmp, 1);
+//  tmp = 0x73;
+//  nRf_WriteCMD(p_nRf, CMD_ACTIVATE, &tmp, 1);
 // FEATURE 0
   p_nRf->nRfFeaturesStruct.byte = 0;
   nRfRegisterWrite(p_nRf, &p_nRf->nRfFeaturesReg);
@@ -170,12 +170,12 @@ void nRF_ModuleInit(t_nRF24L01 *p_nRf)
   p_nRf->nRfRfSetupStruct.RF_SETUP.RF_PWR = 0;
   nRfRegisterWrite(p_nRf, &p_nRf->nRfRfSetupReg);
 // TX_ADDR адрес передатчика (0xb3,0xb4,0x01)
-  p_nRf->nRfTxAddrStruct.buf[0] = 0xA5;
-  p_nRf->nRfTxAddrStruct.buf[1] = 0xA5;
-  p_nRf->nRfTxAddrStruct.buf[2] = 0xA5;
-  p_nRf->nRfTxAddrStruct.buf[3] = 0xA5;
-  p_nRf->nRfTxAddrStruct.buf[4] = 0xA5;
-  nRfRegisterWrite(p_nRf, &p_nRf->nRfTxAddrReg);
+//  p_nRf->nRfTxAddrStruct.buf[0] = 0xA5;
+//  p_nRf->nRfTxAddrStruct.buf[1] = 0xA5;
+//  p_nRf->nRfTxAddrStruct.buf[2] = 0xA5;
+//  p_nRf->nRfTxAddrStruct.buf[3] = 0xA5;
+//  p_nRf->nRfTxAddrStruct.buf[4] = 0xA5;
+//  nRfRegisterWrite(p_nRf, &p_nRf->nRfTxAddrReg);
 // RX_ADDR_P0 - адрес приёмника
 //  p_nRf->nRfRxAddrP0Struct.buf[0] = 0xA5;
 //  p_nRf->nRfRxAddrP0Struct.buf[1] = 0xA5;
@@ -238,6 +238,7 @@ void nRf_WriteCMD(t_nRF24L01 *p_nRf, uint8_t cmd, uint8_t *p_data, uint8_t size)
 {
   p_nRf->csnSetLo();
   p_nRf->spiTransmit(&cmd, 1);
+  HAL_Delay(1);
   if(p_data != NULL)
   {
     p_nRf->spiTransmit(p_data, size);
@@ -338,7 +339,7 @@ void nRf_Send(t_nRF24L01 *p_nRf, uint8_t *p_buf, uint8_t size)
   p_nRf->nRfTxAddrStruct.buf[4] = 0xA5;
   nRfRegisterWrite(p_nRf, &p_nRf->nRfTxAddrReg);
 // RX_ADDR_P0 - адрес приёмника
-  p_nRf->nRfRxAddrP0Struct.buf[0] = 0xA5;
+  p_nRf->nRfRxAddrP0Struct.buf[0] = 0xAA;
   p_nRf->nRfRxAddrP0Struct.buf[1] = 0xA5;
   p_nRf->nRfRxAddrP0Struct.buf[2] = 0xA5;
   p_nRf->nRfRxAddrP0Struct.buf[3] = 0xA5;

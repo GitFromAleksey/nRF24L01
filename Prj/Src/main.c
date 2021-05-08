@@ -160,8 +160,17 @@ uint8_t buf[2] = {0xF1, 0xF2};
 
     if( (HAL_GetTick() - ticks) > 100)
     {
-//      if(nRF_2.nRfStatusStruct.STATUS.RX_P_NO == 1)
-//        nRf_ReadCMD(&nRF_2, CMD_R_RX_PAYLOAD, &buf[0], 2);
+
+      if(nRF_2.nRfStatusStruct.STATUS.RX_P_NO == 1)
+      {
+        nRF_2.ceSetLo();
+        if(nRF_2.nRfStatusStruct.STATUS.RX_DR == 1)
+        {
+          nRf_ReadCMD(&nRF_2, CMD_R_RX_PAYLOAD, (uint8_t*)&rd_counter, 2);
+        }
+        nRF_2.ceSetHi();
+      }
+
       ticks = HAL_GetTick();
       nRf_Send(&nRF_1, (uint8_t*)&wr_counter, 2);
       ++wr_counter;
