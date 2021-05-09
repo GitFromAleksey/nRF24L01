@@ -48,6 +48,8 @@
 #define REG_DYNPD         (uint8_t)0x1C
 #define REG_FEATURE       (uint8_t)0x1D
 
+#define PAYLOAD_DATA_LEN      32u
+
 typedef union
 {
   struct
@@ -334,6 +336,9 @@ typedef struct
   t_register *PollingCurrentRegister;
 
   bool isMaster;  // true - master, false - slave
+  uint8_t TxBufferCnt;
+  uint8_t TxBuffer[PAYLOAD_DATA_LEN];
+  uint8_t RxBuffer[PAYLOAD_DATA_LEN];
 
   void (*ceSetHi)(void);
   void (*ceSetLo)(void);
@@ -342,6 +347,7 @@ typedef struct
   void (*spiTransmit)(uint8_t *data, uint16_t size);
   void (*spiReceive)(uint8_t *data, uint16_t size);
   void (*ReceiveEventCallback)(uint8_t *data, uint16_t size);
+  void (*DelayCallback)(uint8_t delay_ms);
 } t_nRF24L01;
 
 
@@ -352,13 +358,11 @@ void nRF_Setup(t_nRF24L01 *p_nRF, bool master,
               void (*csnSetLo)(void),
               void (*spiTransmit)(uint8_t *data, uint16_t size),
               void (*spiReceive)(uint8_t *data, uint16_t size),
-              void (*ReceiveEventCallback)(uint8_t *data, uint16_t size));
+              void (*ReceiveEventCallback)(uint8_t *data, uint16_t size),
+              void (*DelayCallback)(uint8_t delay_ms));
 
 void nRf_RUN(t_nRF24L01 *p_nRf);
+uint8_t nRf_SendData(t_nRF24L01 *p_nRf, uint8_t *p_buf, uint8_t size);
 
-void nRf_Send(t_nRF24L01 *p_nRf, uint8_t *p_buf, uint8_t size);
-
-//void nRf_SwitchReceiveMode(t_nRF24L01 *p_nRf);
-//void nRf_ReadCMD(t_nRF24L01 *p_nRf, uint8_t cmd, uint8_t *p_data, uint8_t size);
 
 #endif /* _N_RF24L01_H_ */

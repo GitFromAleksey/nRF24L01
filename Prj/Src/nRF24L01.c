@@ -1,7 +1,6 @@
 #include "nRF24L01.h"
-#include "stm32f1xx_hal.h"
 
-#define PAYLOAD_DATA_LEN      32u
+
 
 #define RECEIVE_BUFFER_SIZE   32u
 uint8_t ReceiveBuffer[RECEIVE_BUFFER_SIZE];
@@ -179,7 +178,7 @@ void nRF_ModuleInit(t_nRF24L01 *p_nRf)
   p_nRf->nRfConfigStruct.CONFIG.PWR_UP = 1;
   nRfRegisterWrite(p_nRf, &p_nRf->nRfConfigReg);
 // pause 5ms
-  HAL_Delay(5);
+  p_nRf->DelayCallback(5);
 
 // SETUP_AW 0x01 - RX/TX Address field width '01' - 3 bytes 
   p_nRf->nRfSetupAwStruct.byte = 0;
@@ -206,7 +205,7 @@ void nRF_ModuleInit(t_nRF24L01 *p_nRf)
 // DYNPD 0
   p_nRf->nRfDynpdStruct.byte = 0;
   nRfRegisterWrite(p_nRf, &p_nRf->nRfDynpdReg);
-// STATUS 0x70 - reset irq flags - 1110000 ?
+// STATUS 0x70 - reset irq flags - 1110000
   p_nRf->nRfStatusStruct.byte = 0;
   p_nRf->nRfStatusStruct.STATUS.TX_DS = 1;
   p_nRf->nRfStatusStruct.STATUS.RX_DR = 1;
@@ -231,11 +230,14 @@ void nRF_Setup(t_nRF24L01 *p_nRf, bool master,
               void (*csnSetLo)(void),
               void (*spiTransmit)(uint8_t *data, uint16_t size),
               void (*spiReceive)(uint8_t *data, uint16_t size),
-              void (*ReceiveEventCallback)(uint8_t *data, uint16_t size))
+              void (*ReceiveEventCallback)(uint8_t *data, uint16_t size),
+              void (*DelayCallback)(uint8_t delay_ms))
 {
   nRF_RegistersInit(p_nRf);
 
   p_nRf->isMaster = master;
+  p_nRf->TxBufferCnt = 0;
+  p_nRf->RxBufferCnt = 0;
 
   p_nRf->ceSetHi = ceSetHi;
   p_nRf->ceSetLo = ceSetLo;
@@ -245,6 +247,7 @@ void nRF_Setup(t_nRF24L01 *p_nRf, bool master,
   p_nRf->spiReceive = spiReceive;
   p_nRf->spiTransmit = spiTransmit;
   p_nRf->ReceiveEventCallback = ReceiveEventCallback;
+  p_nRf->DelayCallback = DelayCallback;
 
   p_nRf->csnSetHi();
   p_nRf->ceSetLo();
@@ -272,7 +275,7 @@ void nRf_WriteCMD(t_nRF24L01 *p_nRf, uint8_t cmd, uint8_t *p_data, uint8_t size)
 {
   p_nRf->csnSetLo();
   p_nRf->spiTransmit(&cmd, 1);
-//  HAL_Delay(1);
+  p_nRf->DelayCallback(1);
   if(p_data != NULL)
   {
     p_nRf->spiTransmit(p_data, size);
@@ -289,7 +292,6 @@ void nRfPollingRegisters(t_nRF24L01 *p_nRf)
   else
     p_nRf->PollingCurrentRegister = p_nRf->PollingCurrentRegister->next_register;
   nRfRegisterRead(p_nRf, p_reg);
-
 }
 //-----------------------------------------------------------------------------
 void nRf_SwitchReceiveMode(t_nRF24L01 *p_nRf)
@@ -302,7 +304,7 @@ void nRf_SwitchReceiveMode(t_nRF24L01 *p_nRf)
   nRfRegisterWrite(p_nRf, &p_nRf->nRfConfigReg);
 
   p_nRf->ceSetHi();
-  HAL_Delay(1);
+  p_nRf->DelayCallback(1);
 
 // FLUSH_RX
   nRf_WriteCMD(p_nRf, CMD_FLUSH_RX, NULL, 0);
@@ -320,7 +322,7 @@ void nRf_SwitchTransmitMode(t_nRF24L01 *p_nRf)
   nRfRegisterWrite(p_nRf, &p_nRf->nRfConfigReg);
 
   p_nRf->ceSetHi();
-  HAL_Delay(1);
+  p_nRf->DelayCallback(1);
 
 // FLUSH_RX
   nRf_WriteCMD(p_nRf, CMD_FLUSH_RX, NULL, 0);
@@ -328,7 +330,24 @@ void nRf_SwitchTransmitMode(t_nRF24L01 *p_nRf)
   nRf_WriteCMD(p_nRf, CMD_FLUSH_TX, NULL, 0);
 }
 //-----------------------------------------------------------------------------
-void nRf_Send(t_nRF24L01 *p_nRf, uint8_t *p_buf, uint8_t size)
+uint8_t nRf_SendData(t_nRF24L01 *p_nRf, uint8_t *p_buf, uint8_t size)
+{
+  while(size > 0)
+  {
+    if(p_nRf->TxBufferCnt < PAYLOAD_DATA_LEN)
+    {
+      p_nRf->TxBuffer[p_nRf->TxBufferCnt++] = *p_buf; // TODO это можно сделать с memcpy
+      ++p_buf;
+    }
+    else
+    {
+      return size;
+    }
+    --size;
+  }
+  return size;
+}
+void nRf_Send(t_nRF24L01 *p_nRf)//, uint8_t *p_buf, uint8_t size)
 {
   nRfRegisterRead(p_nRf, &p_nRf->nRfStatusReg);
 //  if(p_nRf->nRfStatusStruct.STATUS.TX_DS == 1)
@@ -346,13 +365,14 @@ void nRf_Send(t_nRF24L01 *p_nRf, uint8_t *p_buf, uint8_t size)
 //  p_nRf->nRfConfigStruct.CONFIG.EN_CRC = 1;
   nRfRegisterWrite(p_nRf, &p_nRf->nRfConfigReg);
 // delay 150 us
-  HAL_Delay(1);
-//  nRf_Transmit(p_nRf, CMD_W_TX_PAYLOAD, p_buf, size);
-  nRf_WriteCMD(p_nRf, CMD_W_TX_PAYLOAD, p_buf, size);
+  p_nRf->DelayCallback(1);
+//  nRf_WriteCMD(p_nRf, CMD_W_TX_PAYLOAD, p_buf, size);
+  nRf_WriteCMD(p_nRf, CMD_W_TX_PAYLOAD, p_nRf->TxBuffer, p_nRf->TxBufferCnt);
+  p_nRf->TxBufferCnt = 0;
 // CE_SET
   p_nRf->ceSetHi();
 // delay 10us
-  HAL_Delay(1);
+  p_nRf->DelayCallback(1);
 // CE_RESET
   p_nRf->ceSetLo();
 }
@@ -383,8 +403,13 @@ void nRfRegisterWrite(t_nRF24L01 *p_nRf, t_register *p_reg)
 //-----------------------------------------------------------------------------
 void nRf_RUN(t_nRF24L01 *p_nRf)
 {
-  nRfPollingRegisters(p_nRf);
+  nRfPollingRegisters(p_nRf); // автоматический опрос списка регистров(чтобы иметь актуальную информацию по всем регистрам)
 
+// передача данных, если они есть в буфере
+  if(p_nRf->TxBufferCnt > 0)
+    nRf_Send(p_nRf);
+
+// запрос статусного регистра
   nRfRegisterRead(p_nRf, &p_nRf->nRfStatusReg);
 
   if(p_nRf->nRfConfigStruct.CONFIG.PRIM_RX == 0) // передатчик
@@ -402,7 +427,7 @@ void nRf_RUN(t_nRF24L01 *p_nRf)
       nRfRegisterWrite(p_nRf, &p_nRf->nRfStatusReg);
     }
   }
-  
+
   if(p_nRf->nRfConfigStruct.CONFIG.PRIM_RX == 1) // приёмник
   {
     if(p_nRf->nRfStatusStruct.STATUS.RX_P_NO == 1)
@@ -410,10 +435,12 @@ void nRf_RUN(t_nRF24L01 *p_nRf)
       p_nRf->ceSetLo();
       if(p_nRf->nRfStatusStruct.STATUS.RX_DR == 1)
       {
-        nRf_ReadCMD(p_nRf, CMD_R_RX_PAYLOAD, ReceiveBuffer, PAYLOAD_DATA_LEN);
+        //nRf_ReadCMD(p_nRf, CMD_R_RX_PAYLOAD, ReceiveBuffer, PAYLOAD_DATA_LEN);
+        nRf_ReadCMD(p_nRf, CMD_R_RX_PAYLOAD, p_nRf->RxBuffer, PAYLOAD_DATA_LEN);
         p_nRf->nRfStatusStruct.STATUS.RX_DR = 0;
         nRfRegisterWrite(p_nRf, &p_nRf->nRfStatusReg);
-        p_nRf->ReceiveEventCallback(ReceiveBuffer, PAYLOAD_DATA_LEN);//
+        //p_nRf->ReceiveEventCallback(ReceiveBuffer, PAYLOAD_DATA_LEN);
+        p_nRf->ReceiveEventCallback(p_nRf->RxBuffer, PAYLOAD_DATA_LEN);
       }
       p_nRf->ceSetHi();
     }
