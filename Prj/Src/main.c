@@ -41,6 +41,7 @@
 /* USER CODE BEGIN PM */
 #define LED_ON    HAL_GPIO_WritePin(LED_PC13_GPIO_Port, LED_PC13_Pin, GPIO_PIN_RESET);
 #define LED_OFF   HAL_GPIO_WritePin(LED_PC13_GPIO_Port, LED_PC13_Pin, GPIO_PIN_SET);
+#define LED_TOGGLE  HAL_GPIO_TogglePin(LED_PC13_GPIO_Port, LED_PC13_Pin);
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -109,12 +110,12 @@ void ReceiveEvent_1(uint8_t *data, uint16_t size)
 
 void ReceiveEvent_2(uint8_t *data, uint16_t size)
 {
-  LED_ON;
+  LED_TOGGLE;
   memcpy((void*)&rd_buf, data, size);
-  LED_OFF;
 //  rd_counter = *data;
 }
 
+// TODO нужно переделать под микросекунды
 void DelayCallback(uint8_t delay_ms)
 {
   HAL_Delay(delay_ms);
@@ -171,7 +172,7 @@ int main(void)
 
   while(1)
   {
-    if( (HAL_GetTick() - ticks) > 1)
+    if( (HAL_GetTick() - ticks) > 10)
     {
       ticks = HAL_GetTick();
       memcpy(wr_buf, (void*)&wr_counter, 2);

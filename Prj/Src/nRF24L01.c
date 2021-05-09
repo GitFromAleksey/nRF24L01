@@ -8,6 +8,7 @@ uint8_t ReceiveBuffer[RECEIVE_BUFFER_SIZE];
 void nRfRegisterRead(t_nRF24L01 *p_nRf, t_register *p_reg);
 void nRfRegisterWrite(t_nRF24L01 *p_nRf, t_register *p_reg);
 void nRf_WriteCMD(t_nRF24L01 *p_nRf, uint8_t cmd, uint8_t *p_data, uint8_t size);
+void nRf_SwitchTransmitMode(t_nRF24L01 *p_nRf);
 void nRf_SwitchReceiveMode(t_nRF24L01 *p_nRf);
 
 // добавляет регистр в список для автоматического опроса регистров
@@ -120,54 +121,6 @@ void nRF_RegistersInit(t_nRF24L01 *p_nRF)
   nRF_AddPollingRegister(p_nRF, &p_nRF->nRfFeaturesReg);
 }
 //-----------------------------------------------------------------------------
-void nRf_AsMasterSetup(t_nRF24L01 *p_nRf)
-{
-// EN_AA 0x02 - 10 - ENAA_P0 - Enable ‘Auto Acknowledgment’
-  p_nRf->nRfEnAaStruct.byte = 0;
-  p_nRf->nRfEnAaStruct.en_aa.ENAA_P0 = 1;
-  nRfRegisterWrite(p_nRf, &p_nRf->nRfEnAaReg);
-// REG_EN_RXADDR 0x02 - 10 - ERX_P0
-  p_nRf->nRfEnRxAddrStruct.byte = 0;
-  p_nRf->nRfEnRxAddrStruct.en_rxaddr.ERX_P0 = 1;
-  nRfRegisterWrite(p_nRf, &p_nRf->nRfEnRxAddrReg);
-// RX_PW_P0 - Number of bytes in RX payload in data pipe 1 (1 to 32 bytes).
-  p_nRf->nRfRxPwP0Struct.byte = 0;
-  p_nRf->nRfRxPwP0Struct.RX_PW_Px.RX_PW_Px = PAYLOAD_DATA_LEN;
-  nRfRegisterWrite(p_nRf, &p_nRf->nRfRxPwP0Reg);
-
-// RX_ADDR_P0 - адрес приёмника
-  p_nRf->nRfRxAddrP0Struct.buf[0] = 0xAA;
-  p_nRf->nRfRxAddrP0Struct.buf[1] = 0xA5;
-  p_nRf->nRfRxAddrP0Struct.buf[2] = 0xA5;
-  p_nRf->nRfRxAddrP0Struct.buf[3] = 0xA5;
-  p_nRf->nRfRxAddrP0Struct.buf[4] = 0xA5;
-  nRfRegisterWrite(p_nRf, &p_nRf->nRfRxAddrP0Reg);
-}
-//-----------------------------------------------------------------------------
-void nRf_AsSlaveSetup(t_nRF24L01 *p_nRf)
-{
-// EN_AA 0x02 - 10 - ENAA_P1 - Enable ‘Auto Acknowledgment’
-  p_nRf->nRfEnAaStruct.byte = 0;
-  p_nRf->nRfEnAaStruct.en_aa.ENAA_P1 = 1;
-  nRfRegisterWrite(p_nRf, &p_nRf->nRfEnAaReg);
-// REG_EN_RXADDR 0x02 - 10 - ERX_P1
-  p_nRf->nRfEnRxAddrStruct.byte = 0;
-  p_nRf->nRfEnRxAddrStruct.en_rxaddr.ERX_P1 = 1;
-  nRfRegisterWrite(p_nRf, &p_nRf->nRfEnRxAddrReg);
-// RX_PW_P1 - Number of bytes in RX payload in data pipe 1 (1 to 32 bytes).
-  p_nRf->nRfRxPwP1Struct.byte = 0;
-  p_nRf->nRfRxPwP1Struct.RX_PW_Px.RX_PW_Px = PAYLOAD_DATA_LEN;
-  nRfRegisterWrite(p_nRf, &p_nRf->nRfRxPwP1Reg);
-  
-// RX_ADDR_P1 - адрес приёмника
-  p_nRf->nRfRxAddrP1Struct.buf[0] = 0xA5;
-  p_nRf->nRfRxAddrP1Struct.buf[1] = 0xA5;
-  p_nRf->nRfRxAddrP1Struct.buf[2] = 0xA5;
-  p_nRf->nRfRxAddrP1Struct.buf[3] = 0xA5;
-  p_nRf->nRfRxAddrP1Struct.buf[4] = 0xA5;
-  nRfRegisterWrite(p_nRf, &p_nRf->nRfRxAddrP1Reg);
-}
-//-----------------------------------------------------------------------------
 void nRF_ModuleInit(t_nRF24L01 *p_nRf)
 {
   // CE_RESET
@@ -189,13 +142,7 @@ void nRF_ModuleInit(t_nRF24L01 *p_nRf)
   p_nRf->nRfSetupRetrStruct.SETUP_RETR.ARD = 5;
   p_nRf->nRfSetupRetrStruct.SETUP_RETR.ARC = 15;
   nRfRegisterWrite(p_nRf, &p_nRf->nRfSetupRetrReg);
-// TX_ADDR адрес передатчика (0xb3,0xb4,0x01)
-  p_nRf->nRfTxAddrStruct.buf[0] = 0xA5;
-  p_nRf->nRfTxAddrStruct.buf[1] = 0xA5;
-  p_nRf->nRfTxAddrStruct.buf[2] = 0xA5;
-  p_nRf->nRfTxAddrStruct.buf[3] = 0xA5;
-  p_nRf->nRfTxAddrStruct.buf[4] = 0xA5;
-  nRfRegisterWrite(p_nRf, &p_nRf->nRfTxAddrReg);
+
 // ACTIVATE // эта настройка для модуля без плюса
 //  tmp = 0x73;
 //  nRf_WriteCMD(p_nRf, CMD_ACTIVATE, &tmp, 1);
@@ -217,10 +164,35 @@ void nRF_ModuleInit(t_nRF24L01 *p_nRf)
 // RF_SETUP 0x06 - 1Mbit, 0dBm - 110
   p_nRf->nRfRfSetupStruct.byte = 0;
   p_nRf->nRfRfSetupStruct.RF_SETUP.RF_DR_HIGH = 0;
-  p_nRf->nRfRfSetupStruct.RF_SETUP.RF_PWR = 0;
+  p_nRf->nRfRfSetupStruct.RF_SETUP.RF_PWR = 3;
   nRfRegisterWrite(p_nRf, &p_nRf->nRfRfSetupReg);
 
-  nRf_SwitchReceiveMode(p_nRf);
+// EN_AA 0x02 - 10 - ENAA_P1 - Enable ‘Auto Acknowledgment’
+  p_nRf->nRfEnAaStruct.byte = 0;
+  p_nRf->nRfEnAaStruct.en_aa.ENAA_P0 = 0;
+  nRfRegisterWrite(p_nRf, &p_nRf->nRfEnAaReg);
+// RX_PW_P1 - Number of bytes in RX payload in data pipe 1 (1 to 32 bytes).
+  p_nRf->nRfRxPwP0Struct.byte = 0;
+  p_nRf->nRfRxPwP0Struct.RX_PW_Px.RX_PW_Px = PAYLOAD_DATA_LEN;
+  nRfRegisterWrite(p_nRf, &p_nRf->nRfRxPwP0Reg);
+
+// RX_ADDR_P1 - адрес приёмника
+  p_nRf->nRfRxAddrP0Struct.buf[0] = 0xA5;
+  p_nRf->nRfRxAddrP0Struct.buf[1] = 0xA5;
+  p_nRf->nRfRxAddrP0Struct.buf[2] = 0xA5;
+  p_nRf->nRfRxAddrP0Struct.buf[3] = 0xA5;
+  p_nRf->nRfRxAddrP0Struct.buf[4] = 0xA5;
+  nRfRegisterWrite(p_nRf, &p_nRf->nRfRxAddrP0Reg);
+  
+// TX_ADDR адрес передатчика (0xb3,0xb4,0x01)
+  p_nRf->nRfTxAddrStruct.buf[0] = 0xA5;
+  p_nRf->nRfTxAddrStruct.buf[1] = 0xA5;
+  p_nRf->nRfTxAddrStruct.buf[2] = 0xA5;
+  p_nRf->nRfTxAddrStruct.buf[3] = 0xA5;
+  p_nRf->nRfTxAddrStruct.buf[4] = 0xA5;
+  nRfRegisterWrite(p_nRf, &p_nRf->nRfTxAddrReg);
+  
+
 }
 //-----------------------------------------------------------------------------
 void nRF_Setup(t_nRF24L01 *p_nRf, bool master,
@@ -237,7 +209,6 @@ void nRF_Setup(t_nRF24L01 *p_nRf, bool master,
 
   p_nRf->isMaster = master;
   p_nRf->TxBufferCnt = 0;
-  p_nRf->RxBufferCnt = 0;
 
   p_nRf->ceSetHi = ceSetHi;
   p_nRf->ceSetLo = ceSetLo;
@@ -255,9 +226,9 @@ void nRF_Setup(t_nRF24L01 *p_nRf, bool master,
   nRF_ModuleInit(p_nRf);
   
   if(master)
-    nRf_AsMasterSetup(p_nRf);
+    nRf_SwitchTransmitMode(p_nRf);
   else
-    nRf_AsSlaveSetup(p_nRf);
+    nRf_SwitchReceiveMode(p_nRf);
 }
 //-----------------------------------------------------------------------------
 void nRf_ReadCMD(t_nRF24L01 *p_nRf, uint8_t cmd, uint8_t *p_data, uint8_t size)
@@ -296,12 +267,17 @@ void nRfPollingRegisters(t_nRF24L01 *p_nRf)
 //-----------------------------------------------------------------------------
 void nRf_SwitchReceiveMode(t_nRF24L01 *p_nRf)
 {
-  nRfRegisterRead(p_nRf, &p_nRf->nRfConfigReg);
+  p_nRf->ceSetLo();
 
+  nRfRegisterRead(p_nRf, &p_nRf->nRfConfigReg);
   p_nRf->nRfConfigStruct.CONFIG.PWR_UP = 1;
   p_nRf->nRfConfigStruct.CONFIG.PRIM_RX = 1;
-
   nRfRegisterWrite(p_nRf, &p_nRf->nRfConfigReg);
+
+// REG_EN_RXADDR
+  p_nRf->nRfEnRxAddrStruct.byte = 0;
+  p_nRf->nRfEnRxAddrStruct.en_rxaddr.ERX_P0 = 1;
+  nRfRegisterWrite(p_nRf, &p_nRf->nRfEnRxAddrReg);
 
   p_nRf->ceSetHi();
   p_nRf->DelayCallback(1);
@@ -314,15 +290,21 @@ void nRf_SwitchReceiveMode(t_nRF24L01 *p_nRf)
 //-----------------------------------------------------------------------------
 void nRf_SwitchTransmitMode(t_nRF24L01 *p_nRf)
 {
+  p_nRf->ceSetLo();
+// CONFIG set PWR_UP, reset PRIM_RX
   nRfRegisterRead(p_nRf, &p_nRf->nRfConfigReg);
-
   p_nRf->nRfConfigStruct.CONFIG.PWR_UP = 1;
   p_nRf->nRfConfigStruct.CONFIG.PRIM_RX = 0;
-
   nRfRegisterWrite(p_nRf, &p_nRf->nRfConfigReg);
+// delay 150 us
+  p_nRf->DelayCallback(1);
+
+// REG_EN_RXADDR 0x02 - 10 - ERX_P1
+  p_nRf->nRfEnRxAddrStruct.byte = 0;
+  p_nRf->nRfEnRxAddrStruct.en_rxaddr.ERX_P0 = 0;
+  nRfRegisterWrite(p_nRf, &p_nRf->nRfEnRxAddrReg);
 
   p_nRf->ceSetHi();
-  p_nRf->DelayCallback(1);
 
 // FLUSH_RX
   nRf_WriteCMD(p_nRf, CMD_FLUSH_RX, NULL, 0);
@@ -332,6 +314,8 @@ void nRf_SwitchTransmitMode(t_nRF24L01 *p_nRf)
 //-----------------------------------------------------------------------------
 uint8_t nRf_SendData(t_nRF24L01 *p_nRf, uint8_t *p_buf, uint8_t size)
 {
+  if(p_nRf->isMaster)
+    nRf_SwitchTransmitMode(p_nRf);
   while(size > 0)
   {
     if(p_nRf->TxBufferCnt < PAYLOAD_DATA_LEN)
@@ -347,25 +331,16 @@ uint8_t nRf_SendData(t_nRF24L01 *p_nRf, uint8_t *p_buf, uint8_t size)
   }
   return size;
 }
-void nRf_Send(t_nRF24L01 *p_nRf)//, uint8_t *p_buf, uint8_t size)
+//-----------------------------------------------------------------------------
+void nRf_Send(t_nRF24L01 *p_nRf)
 {
   nRfRegisterRead(p_nRf, &p_nRf->nRfStatusReg);
-//  if(p_nRf->nRfStatusStruct.STATUS.TX_DS == 1)
-//    return;
+  if(p_nRf->nRfConfigStruct.CONFIG.PRIM_RX == 1)
+    return;
   p_nRf->ceSetLo();
-// FLUSH_RX
-  nRf_WriteCMD(p_nRf, CMD_FLUSH_RX, NULL, 0);
-// FLUSH_TX
-  nRf_WriteCMD(p_nRf, CMD_FLUSH_TX, NULL, 0);
 
-// CONFIG set PWR_UP, reset PRIM_RX
-  nRfRegisterRead(p_nRf, &p_nRf->nRfConfigReg);
-  p_nRf->nRfConfigStruct.CONFIG.PWR_UP = 1;
-  p_nRf->nRfConfigStruct.CONFIG.PRIM_RX = 0;
-//  p_nRf->nRfConfigStruct.CONFIG.EN_CRC = 1;
-  nRfRegisterWrite(p_nRf, &p_nRf->nRfConfigReg);
-// delay 150 us
-  p_nRf->DelayCallback(1);
+//  nRf_SwitchTransmitMode(p_nRf);
+
 //  nRf_WriteCMD(p_nRf, CMD_W_TX_PAYLOAD, p_buf, size);
   nRf_WriteCMD(p_nRf, CMD_W_TX_PAYLOAD, p_nRf->TxBuffer, p_nRf->TxBufferCnt);
   p_nRf->TxBufferCnt = 0;
@@ -409,38 +384,40 @@ void nRf_RUN(t_nRF24L01 *p_nRf)
   if(p_nRf->TxBufferCnt > 0)
     nRf_Send(p_nRf);
 
-// запрос статусного регистра
+// запрос регистра статуса
   nRfRegisterRead(p_nRf, &p_nRf->nRfStatusReg);
 
   if(p_nRf->nRfConfigStruct.CONFIG.PRIM_RX == 0) // передатчик
   {
-    if(p_nRf->nRfStatusStruct.STATUS.TX_DS == 1)
+    if(p_nRf->nRfStatusStruct.STATUS.TX_DS == 1) // данные ушли в воздух
     {
       p_nRf->ceSetLo();
-      p_nRf->nRfStatusStruct.STATUS.TX_DS = 1;
+      p_nRf->nRfStatusStruct.STATUS.TX_DS = 1; // стираем бит записью
       nRfRegisterWrite(p_nRf, &p_nRf->nRfStatusReg);
       nRf_WriteCMD(p_nRf, CMD_FLUSH_TX, NULL, 0);
+      nRf_SwitchReceiveMode(p_nRf); // TODO test
     }
-    if(p_nRf->nRfStatusStruct.STATUS.MAX_RT == 1)
+    if(p_nRf->nRfStatusStruct.STATUS.MAX_RT == 1) // достигнуто максимальное кол-во попыток передачи
     {
-      p_nRf->nRfStatusStruct.STATUS.MAX_RT = 1;
+      p_nRf->nRfStatusStruct.STATUS.MAX_RT = 1; // стираем бит записью
       nRfRegisterWrite(p_nRf, &p_nRf->nRfStatusReg);
     }
   }
 
   if(p_nRf->nRfConfigStruct.CONFIG.PRIM_RX == 1) // приёмник
   {
-    if(p_nRf->nRfStatusStruct.STATUS.RX_P_NO == 1)
+    if(p_nRf->nRfStatusStruct.STATUS.RX_P_NO != 7) // приняты данные для какого-то канала
     {
       p_nRf->ceSetLo();
       if(p_nRf->nRfStatusStruct.STATUS.RX_DR == 1)
       {
-        //nRf_ReadCMD(p_nRf, CMD_R_RX_PAYLOAD, ReceiveBuffer, PAYLOAD_DATA_LEN);
         nRf_ReadCMD(p_nRf, CMD_R_RX_PAYLOAD, p_nRf->RxBuffer, PAYLOAD_DATA_LEN);
         p_nRf->nRfStatusStruct.STATUS.RX_DR = 0;
         nRfRegisterWrite(p_nRf, &p_nRf->nRfStatusReg);
-        //p_nRf->ReceiveEventCallback(ReceiveBuffer, PAYLOAD_DATA_LEN);
         p_nRf->ReceiveEventCallback(p_nRf->RxBuffer, PAYLOAD_DATA_LEN);
+
+        nRf_SendData(p_nRf, p_nRf->RxBuffer, PAYLOAD_DATA_LEN); // TODO test
+        nRf_SwitchTransmitMode(p_nRf); // TODO test
       }
       p_nRf->ceSetHi();
     }
